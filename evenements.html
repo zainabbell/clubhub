@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubHub - Tous les événements</title>
+    <!-- Script anti-flash immédiat pour le mode sombre (Défi TP2) -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('clubhub-theme');
+          if (theme === 'dark') {
+            document.documentElement.dataset.theme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/app.js" defer></script>
+</head>
+<body>
+    <header>
+        <div class="header-brand">
+            <h1>ClubHub</h1>
+            <button type="button" class="theme-toggle" aria-label="Changer de thème">Mode sombre</button>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="evenements.html" aria-current="page">Événements</a></li>
+                <li><a href="evenement.html">Détail événement</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Tous les événements</h1>
+
+        <!-- Formulaire de filtres interactif (TP2) -->
+        <form class="filters" role="search" onsubmit="event.preventDefault();">
+            <div class="filter-group">
+                <label for="search">Recherche</label>
+                <input type="search" id="search" name="q" placeholder="Ex: Arduino, échecs, IA..." autocomplete="off">
+            </div>
+
+            <div class="filter-group">
+                <label for="club-filter">Club</label>
+                <select id="club-filter" name="club">
+                    <option value="">Tous les clubs</option>
+                    <option value="Club Robotique">Club Robotique</option>
+                    <option value="Club Photo">Club Photo</option>
+                    <option value="Club IA">Club IA</option>
+                    <option value="Club Échecs">Club Échecs</option>
+                    <option value="Club Entrepreneuriat">Club Entrepreneuriat</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="sort">Trier par</label>
+                <select id="sort" name="sort">
+                    <option value="default">Ordre par défaut</option>
+                    <option value="date-asc">Date la plus proche</option>
+                    <option value="date-desc">Date la plus lointaine</option>
+                    <option value="places-desc">Places : du plus grand au plus petit</option>
+                    <option value="places-asc">Places : du plus petit au plus grand</option>
+                </select>
+            </div>
+
+            <div class="filter-group filter-group-checkbox">
+                <input type="checkbox" id="fav-filter" name="fav">
+                <label for="fav-filter">Seulement mes favoris</label>
+            </div>
+        </form>
+
+        <p class="results-count" aria-live="polite">5 événements affichés</p>
+        <p class="empty-message" hidden aria-live="polite">Aucun événement ne correspond à votre recherche.</p>
+
+        <section aria-labelledby="liste-evenements">
+            <h2 id="liste-evenements">Liste des événements</h2>
+
+            <div class="cartes">
+                <article data-id="1" data-club="Club Robotique" data-date="2026-10-14T14:00" data-places="20">
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club">Club Robotique</p>
+                            <h3><a href="evenement.html">Atelier Arduino pour débutants</a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="1" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time datetime="2026-10-14T14:00">14/10, 14 h</time> — Salle B204</p>
+                    <p>Places : 20</p>
+                    <p class="card-footer"><a href="evenement.html">Voir le détail</a></p>
+                </article>
+
+                <article data-id="2" data-club="Club Photo" data-date="2026-10-17T09:00" data-places="15">
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club">Club Photo</p>
+                            <h3><a href="evenement.html">Sortie photo en ville</a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="2" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time datetime="2026-10-17T09:00">17/10, 9 h</time> — Entrée principale</p>
+                    <p>Places : 15</p>
+                    <p class="card-footer"><a href="evenement.html">Voir le détail</a></p>
+                </article>
+
+                <article data-id="3" data-club="Club IA" data-date="2026-10-21T10:00" data-places="120">
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club">Club IA</p>
+                            <h3><a href="evenement.html">Conférence : l'IA dans l'industrie</a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="3" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time datetime="2026-10-21T10:00">21/10, 10 h</time> — Amphithéâtre A</p>
+                    <p>Places : 120</p>
+                    <p class="card-footer"><a href="evenement.html">Voir le détail</a></p>
+                </article>
+
+                <article data-id="4" data-club="Club Échecs" data-date="2026-10-24T15:00" data-places="32">
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club">Club Échecs</p>
+                            <h3><a href="evenement.html">Tournoi blitz inter promo</a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="4" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time datetime="2026-10-24T15:00">24/10, 15 h</time> — Foyer des étudiants</p>
+                    <p>Places : 32</p>
+                    <p class="card-footer"><a href="evenement.html">Voir le détail</a></p>
+                </article>
+
+                <article data-id="5" data-club="Club Entrepreneuriat" data-date="2026-10-31T09:00" data-places="40">
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club">Club Entrepreneuriat</p>
+                            <h3><a href="evenement.html">Hackathon impact social</a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="5" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time datetime="2026-10-31T09:00">31/10, 9 h</time> — Salle C101</p>
+                    <p>Places : 40</p>
+                    <p class="card-footer"><a href="evenement.html">Voir le détail</a></p>
+                </article>
+            </div>
+        </section>
+
+        <!-- Tableau récapitulatif (Point Plus S01 / TP1) -->
+        <section aria-labelledby="tableau-recap">
+            <h2 id="tableau-recap">Récapitulatif</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Événement</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Places</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Atelier Arduino pour débutants</td>
+                        <td><time datetime="2026-10-14T14:00">14/10, 14 h</time></td>
+                        <td>20</td>
+                    </tr>
+                    <tr>
+                        <td>Sortie photo en ville</td>
+                        <td><time datetime="2026-10-17T09:00">17/10, 9 h</time></td>
+                        <td>15</td>
+                    </tr>
+                    <tr>
+                        <td>Conférence : l'IA dans l'industrie</td>
+                        <td><time datetime="2026-10-21T10:00">21/10, 10 h</time></td>
+                        <td>120</td>
+                    </tr>
+                    <tr>
+                        <td>Tournoi blitz inter promo</td>
+                        <td><time datetime="2026-10-24T15:00">24/10, 15 h</time></td>
+                        <td>32</td>
+                    </tr>
+                    <tr>
+                        <td>Hackathon impact social</td>
+                        <td><time datetime="2026-10-31T09:00">31/10, 9 h</time></td>
+                        <td>40</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <figure>
+            <img src="img.jpg" alt="Étudiants participant à un atelier et collaborant activement sur le campus">
+            <figcaption>Événements et ateliers ClubHub</figcaption>
+        </figure>
+    </main>
+
+    <footer>
+        <p>ClubHub — Plateforme des clubs étudiants</p>
+    </footer>
+</body>
+</html>
