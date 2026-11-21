@@ -311,13 +311,21 @@ h2 {
 }
 
 /* ============================================================
-   6. CARTES D'ÉVÉNEMENTS & DÉFI FAVORIS
+   6. CARTES D'ÉVÉNEMENTS & DÉFI GRID
    ============================================================ */
 section[aria-labelledby="liste-evenements"],
 section[aria-labelledby="prochains-evenements"] {
   margin-bottom: var(--sp-2xl);
 }
 
+/*
+ * Défi Grid (TP1) :
+ * Grâce à CSS Grid et repeat(auto-fill, minmax(280px, 1fr)), le nombre de colonnes s'ajuste
+ * automatiquement et de façon fluide selon la largeur disponible, sans aucune media query.
+ * Différence avec Flexbox : en Flexbox classique, il fallait obligatoirement écrire des media queries
+ * (ex: min-width: 640px puis 960px) et calculer manuellement les largeurs/flex-basis (50%, 33.333%)
+ * avec gestion explicite du flex-wrap et des marges négatives.
+ */
 .cartes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

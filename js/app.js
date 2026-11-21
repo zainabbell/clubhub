@@ -4,12 +4,12 @@
  * Auteurs : binôme
  *
  * Règles respectées :
- * - Pure Vanilla JS (aucun jQuery ni bibliothèque).
+ * - Pure Vanilla JS (aucun jQuery ni bibliothèque tierce).
  * - Tout le code est dans ce fichier, aucun attribut onclick dans le HTML.
  * - Utilisation exclusive de const et let, jamais de var.
  * - Comparaisons strictes (=== et !==).
  * - Utilisation de textContent (jamais d'innerHTML avec des données saisies) pour éviter les failles XSS.
- * - Aucune erreur dans la console (F12) sur aucune page (présence de vérifications conditionnelles).
+ * - Aucune erreur dans la console (F12) sur aucune page (vérifications préalables des éléments).
  */
 
 'use strict';
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ============================================================
-   1. THÈME SOMBRE / CLAIR (Point 8)
+   1. THÈME SOMBRE / CLAIR (Point 8 & Défi Anti-Flash)
    ============================================================ */
 function initThemeToggle() {
   const toggleButtons = document.querySelectorAll('.theme-toggle');
@@ -45,10 +45,11 @@ function initThemeToggle() {
 
   const THEME_KEY = 'clubhub-theme';
 
-  // Fonction de mise à jour du texte des boutons
+  // Mise à jour de l'intitulé des boutons
   const updateButtonText = (isDark) => {
     toggleButtons.forEach((btn) => {
       btn.textContent = isDark ? 'Mode clair' : 'Mode sombre';
+      btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
     });
   };
 
@@ -124,7 +125,7 @@ function initFavorites() {
 
       saveFavorites([...currentFavs]);
 
-      // Mettre à jour tous les boutons avec cet ID (ex: si présent sur plusieurs pages)
+      // Mettre à jour tous les boutons partageant cet ID
       const relatedButtons = document.querySelectorAll(`.fav-btn[data-fav-id="${cardId}"]`);
       relatedButtons.forEach((b) => {
         b.classList.toggle('is-fav', nowFav);
@@ -132,7 +133,7 @@ function initFavorites() {
         b.setAttribute('aria-pressed', nowFav ? 'true' : 'false');
       });
 
-      // Si le filtre "Favoris seulement" est actif sur evenements.html, recalculer
+      // Déclencher un événement si le filtre "Favoris seulement" est actif
       const favFilter = document.querySelector('#fav-filter');
       if (favFilter && favFilter.checked) {
         window.dispatchEvent(new CustomEvent('clubhub:filter-changed'));
@@ -144,6 +145,28 @@ function initFavorites() {
 /* ============================================================
    3. PAGE ÉVÉNEMENTS (Points 1, 2, 3, 9 & Défis Accents/Favoris)
    ============================================================ */
+
+/**
+ * Parse robuste d'une date d'événement : gère le format ISO (2026-10-14T14:00)
+ * ou le format textuel (14/10, 14 h) pour un tri chronologique sans faille.
+ */
+function parseEventDate(val) {
+  if (!val) return 0;
+  const standardDate = new Date(val);
+  if (!isNaN(standardDate.getTime())) {
+    return standardDate.getTime();
+  }
+  // Format fr du type "14/10, 14 h" ou "14/10"
+  const match = val.match(/(\d{1,2})\/(\d{1,2})(?:.*?(\d{1,2})\s*h)?/i);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const hour = match[3] ? parseInt(match[3], 10) : 0;
+    return new Date(2026, month, day, hour).getTime();
+  }
+  return 0;
+}
+
 function initEventsPage() {
   const filtersForm = document.querySelector('.filters');
   const cardsContainer = document.querySelector('.cartes');
@@ -160,7 +183,7 @@ function initEventsPage() {
   const cardElements = Array.from(cardsContainer.querySelectorAll('article'));
   if (cardElements.length === 0) return;
 
-  // Sauvegarde de l'ordre d'origine pour le tri "default"
+  // Ordre initial pour le tri "default"
   const originalOrder = [...cardElements];
 
   /**
@@ -175,10 +198,10 @@ function initEventsPage() {
       .trim();
   };
 
-  // Fonction principale de filtrage et tri
+  // Filtrage et tri
   const applyFiltersAndSort = () => {
     const query = searchInput ? normalizeText(searchInput.value) : '';
-    const selectedClub = clubFilter ? clubFilter.value : '';
+    const selectedClub = clubFilter ? normalizeText(clubFilter.value) : '';
     const onlyFavs = favFilter ? favFilter.checked : false;
     const currentFavs = new Set(getStoredFavorites());
 
@@ -186,9 +209,8 @@ function initEventsPage() {
 
     // 1. Filtrage des cartes
     cardElements.forEach((card) => {
-      const cardClub = card.dataset.club || '';
-      const cardId = card.dataset.id || '';
-      // On extrait tout le texte de la carte normalisé pour la recherche
+      const cardClub = normalizeText(card.dataset.club || '');
+      const cardId = card.dataset.id || card.dataset.favId || '';
       const cardText = normalizeText(card.textContent);
 
       const matchesSearch = query === '' || cardText.includes(query);
@@ -205,19 +227,19 @@ function initEventsPage() {
       }
     });
 
-    // 2. Tri des cartes dans le DOM
+    // 2. Tri des cartes
     const sortMode = sortSelect ? sortSelect.value : 'default';
     const sortedCards = [...cardElements];
 
     if (sortMode === 'places-desc') {
-      // Du plus grand au plus petit nombre de places
+      // Places : du plus grand au plus petit
       sortedCards.sort((a, b) => {
         const placesA = parseInt(a.dataset.places, 10) || 0;
         const placesB = parseInt(b.dataset.places, 10) || 0;
         return placesB - placesA;
       });
     } else if (sortMode === 'places-asc') {
-      // Du plus petit au plus grand
+      // Places : du plus petit au plus grand
       sortedCards.sort((a, b) => {
         const placesA = parseInt(a.dataset.places, 10) || 0;
         const placesB = parseInt(b.dataset.places, 10) || 0;
@@ -226,28 +248,28 @@ function initEventsPage() {
     } else if (sortMode === 'date-asc') {
       // Date la plus proche d'abord
       sortedCards.sort((a, b) => {
-        const dateA = new Date(a.dataset.date || 0);
-        const dateB = new Date(b.dataset.date || 0);
+        const dateA = parseEventDate(a.dataset.date);
+        const dateB = parseEventDate(b.dataset.date);
         return dateA - dateB;
       });
     } else if (sortMode === 'date-desc') {
       // Date la plus lointaine d'abord
       sortedCards.sort((a, b) => {
-        const dateA = new Date(a.dataset.date || 0);
-        const dateB = new Date(b.dataset.date || 0);
+        const dateA = parseEventDate(a.dataset.date);
+        const dateB = parseEventDate(b.dataset.date);
         return dateB - dateA;
       });
     } else {
-      // Ordre par défaut initial
+      // Ordre par défaut
       sortedCards.sort((a, b) => originalOrder.indexOf(a) - originalOrder.indexOf(b));
     }
 
-    // Réinsertion ordonnée dans le conteneur
+    // Réinsertion ordonnée dans le conteneur DOM
     sortedCards.forEach((card) => {
       cardsContainer.appendChild(card);
     });
 
-    // 3. Mise à jour du compteur de résultats (Point 3)
+    // 3. Mise à jour du compteur de résultats
     if (resultsCount) {
       if (visibleCount === 1) {
         resultsCount.textContent = '1 événement affiché';
@@ -256,7 +278,7 @@ function initEventsPage() {
       }
     }
 
-    // 4. Affichage ou masquage du message vide
+    // 4. Affichage ou masquage du message d'état vide
     if (emptyMessage) {
       if (visibleCount === 0) {
         emptyMessage.removeAttribute('hidden');
@@ -266,7 +288,7 @@ function initEventsPage() {
     }
   };
 
-  // Écouteurs sur les champs de filtrage
+  // Écouteurs sur les entrées de filtre
   if (searchInput) {
     searchInput.addEventListener('input', applyFiltersAndSort);
   }
@@ -280,10 +302,10 @@ function initEventsPage() {
     favFilter.addEventListener('change', applyFiltersAndSort);
   }
 
-  // Écoute d'un événement global si un favori a été cliqué
+  // Événement personnalisé pour les favoris
   window.addEventListener('clubhub:filter-changed', applyFiltersAndSort);
 
-  // Exécution initiale
+  // Application immédiate
   applyFiltersAndSort();
 }
 
@@ -310,7 +332,7 @@ function initRegistrationForm() {
       const length = motivationTextarea.value.length;
       motivationCount.textContent = `${length} / ${MOTIVATION_LIMIT}`;
 
-      // À partir de 90% (270 caractères), ajouter la classe is-near-limit
+      // À partir de 90 % (270 car.), ajouter la classe is-near-limit
       const isNear = length >= MOTIVATION_LIMIT * 0.9;
       motivationCount.classList.toggle('is-near-limit', isNear);
     };
@@ -319,9 +341,9 @@ function initRegistrationForm() {
     updateMotivationCount();
   }
 
-  // Fonctions utilitaires d'affichage d'erreurs
+  // Fonctions utilitaires d'erreur
   const setError = (inputElement, errorElementId, message) => {
-    const errElem = document.querySelector(`#${errorElementId}`);
+    const errElem = form.querySelector(`#${errorElementId}`) || document.querySelector(`#${errorElementId}`);
     if (errElem) {
       errElem.textContent = message;
     }
@@ -332,7 +354,7 @@ function initRegistrationForm() {
   };
 
   const clearError = (inputElement, errorElementId) => {
-    const errElem = document.querySelector(`#${errorElementId}`);
+    const errElem = form.querySelector(`#${errorElementId}`) || document.querySelector(`#${errorElementId}`);
     if (errElem) {
       errElem.textContent = '';
     }
@@ -342,7 +364,7 @@ function initRegistrationForm() {
     }
   };
 
-  // Règles de validation spécifiques pour chaque champ
+  // Validation individuelle de chaque champ
   const validateNom = () => {
     if (!nomInput) return true;
     const value = nomInput.value.trim();
@@ -357,7 +379,6 @@ function initRegistrationForm() {
   const validateEmail = () => {
     if (!emailInput) return true;
     const value = emailInput.value.trim();
-    // Regex de validation d'email simple et standard
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (value === '') {
       setError(emailInput, 'email-error', "L'adresse email est requise.");
@@ -384,14 +405,14 @@ function initRegistrationForm() {
   const validateReglement = () => {
     if (!reglementCheckbox) return true;
     if (!reglementCheckbox.checked) {
-      setError(reglementCheckbox, 'reglement-error', 'Vous devez accepter le règlement.');
+      setError(reglementCheckbox, 'reglement-error', 'Vous devez accepter le règlement du club.');
       return false;
     }
     clearError(reglementCheckbox, 'reglement-error');
     return true;
   };
 
-  // --- Point 5 : Correction en direct pendant la saisie ---
+  // --- Point 5 : Correction instantanée pendant la saisie ---
   if (nomInput) {
     nomInput.addEventListener('input', () => {
       if (nomInput.classList.contains('is-invalid')) {
@@ -424,10 +445,10 @@ function initRegistrationForm() {
     });
   }
 
-  // --- Points 4, 6 & 10 : Validation à l''envoi et accessibilité ---
-  form.addEventListener(''submit'', (e) => {
+  // --- Points 4, 6 & 10 : Validation à l'envoi et accessibilité ---
+  form.addEventListener('submit', (e) => {
     if (formSuccess) {
-      formSuccess.setAttribute(''hidden'', '''');
+      formSuccess.setAttribute('hidden', '');
     }
 
     const isNomValid = validateNom();
@@ -437,23 +458,27 @@ function initRegistrationForm() {
 
     if (!(isNomValid && isEmailValid && isNiveauValid && isReglementValid)) {
       e.preventDefault();
-      const firstInvalidField = form.querySelector(''.is-invalid'');
+      // Accessibilité : premier champ invalide reçoit le focus
+      const firstInvalidField = form.querySelector('.is-invalid');
       if (firstInvalidField) {
         firstInvalidField.focus();
       }
       return;
     }
 
-    const method = (form.getAttribute(''method'') || ''get'').toLowerCase();
-    if (method === ''get'') {
+    // Point 6 : En version statique / TP2 (avant backend actif), empêcher l'envoi et afficher .form-success
+    const action = (form.getAttribute('action') || '').trim();
+    const isStaticTP2 = !action || action === 'inscription.php' || window.location.pathname.endsWith('.html');
+
+    if (isStaticTP2) {
       e.preventDefault();
       if (formSuccess) {
-        formSuccess.removeAttribute(''hidden'');
+        formSuccess.removeAttribute('hidden');
       }
       form.reset();
       if (motivationCount) {
         motivationCount.textContent = `0 / ${MOTIVATION_LIMIT}`;
-        motivationCount.classList.remove(''is-near-limit'');
+        motivationCount.classList.remove('is-near-limit');
       }
     }
   });

@@ -1,0 +1,5 @@
+[
+  {"id":1,"name":"Amine","email":"amine@campus.example","password":"$2y$12$t9Rg85GfrOavzkFJXs/3nO/TDdrquAhM38.5Gu5sVux6/QPKPsgAm","role":"student"},
+  {"id":2,"name":"Sarra","email":"sarra@campus.example","password":"$2y$12$t9Rg85GfrOavzkFJXs/3nO/TDdrquAhM38.5Gu5sVux6/QPKPsgAm","role":"student"},
+  {"id":3,"name":"Robotique","email":"robotique@campus.example","password":"$2y$12$t9Rg85GfrOavzkFJXs/3nO/TDdrquAhM38.5Gu5sVux6/QPKPsgAm","role":"organizer"}
+]

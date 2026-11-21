@@ -1,116 +1,100 @@
 <?php
-declare(strict_types=1);
-
 require_once __DIR__ . '/includes/bootstrap.php';
 
-$pageTitle = 'ClubHub - Tous les événements';
+$pageTitle = 'Événements';
 $currentPage = 'evenements';
-$q = trim((string) ($_GET['q'] ?? ''));
-$events = $q !== '' ? searchEvents($q) : getEvents();
-$clubs = getClubs();
-$count = count($events);
+
+$q = trim($_GET['q'] ?? '');
+$clubFilter = trim($_GET['club'] ?? '');
+$events = getEvents();
+
+// Liste unique des clubs pour le select (Défi S04)
+$clubs = [];
+foreach ($events as $ev) {
+    if (!in_array($ev['club'], $clubs, true)) {
+        $clubs[] = $ev['club'];
+    }
+}
+
+// Filtrage côté serveur (Défi S04 / sans JavaScript)
+$filtered = [];
+foreach ($events as $ev) {
+    if ($q !== '' && mb_stripos($ev['title'] . ' ' . ($ev['description'] ?? ''), $q) === false && mb_stripos($ev['club'], $q) === false) {
+        continue;
+    }
+    if ($clubFilter !== '' && $ev['club'] !== $clubFilter) {
+        continue;
+    }
+    $filtered[] = $ev;
+}
 
 require __DIR__ . '/includes/header.php';
 ?>
-    <main>
-        <h1>Tous les événements</h1>
+<main>
+    <h1>Tous les événements</h1>
 
-        <section aria-labelledby="liste-evenements">
-            <h2 id="liste-evenements">Liste des événements</h2>
+    <!-- Formulaire de filtres (compatible JS TP2 et fallback GET serveur S04) -->
+    <form method="get" action="evenements.php" class="filters" role="search">
+        <div class="filter-group">
+            <label for="search">Recherche</label>
+            <input type="search" id="search" name="q" value="<?= e($q) ?>" placeholder="Ex: Arduino, Photo, IA..." autocomplete="off">
+        </div>
 
-            <form class="filters" role="search" aria-label="Filtrer les événements" method="get" action="evenements.php">
-                <div class="filter-group">
-                    <label for="search">Rechercher</label>
-                    <input type="search" id="search" name="q" placeholder="Ex. Arduino, photo..." autocomplete="off" value="<?= e($q) ?>">
-                </div>
-
-                <div class="filter-group">
-                    <label for="club-filter">Club</label>
-                    <select id="club-filter" name="club">
-                        <option value="">Tous les clubs</option>
-                        <?php foreach ($clubs as $club): ?>
-                            <option value="<?= e($club) ?>"><?= e($club) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="sort">Trier par</label>
-                    <select id="sort" name="sort">
-                        <option value="default">Par défaut</option>
-                        <option value="date-asc">Date (plus proche)</option>
-                        <option value="date-desc">Date (plus lointaine)</option>
-                        <option value="places-desc">Places (du plus grand au plus petit)</option>
-                        <option value="places-asc">Places (du plus petit au plus grand)</option>
-                    </select>
-                </div>
-
-                <div class="filter-group filter-group-checkbox">
-                    <input type="checkbox" id="fav-filter" name="fav-filter">
-                    <label for="fav-filter">Seulement mes favoris</label>
-                </div>
-
-                <noscript>
-                    <div class="filter-group">
-                        <button type="submit">Rechercher</button>
-                    </div>
-                </noscript>
-            </form>
-
-            <p class="results-count" aria-live="polite"><?= e((string) $count) ?> événement<?= $count > 1 ? 's' : '' ?> affiché<?= $count > 1 ? 's' : '' ?></p>
-
-            <p class="empty-message"<?= $count === 0 ? '' : ' hidden' ?>>Aucun événement ne correspond à vos critères de recherche.</p>
-
-            <div class="cartes">
-                <?php foreach ($events as $event): ?>
-                    <?php $left = (int) ($event['places_left'] ?? $event['capacity'] ?? 0); ?>
-                    <article
-                        data-id="<?= e((string) $event['id']) ?>"
-                        data-club="<?= e((string) $event['club']) ?>"
-                        data-date="<?= e((string) $event['starts_at']) ?>"
-                        data-places="<?= e((string) $left) ?>"
-                    >
-                        <div class="card-header-actions">
-                            <div>
-                                <p class="club"><?= e((string) $event['club']) ?></p>
-                                <h3><a href="evenement.php?id=<?= e((string) $event['id']) ?>"><?= e((string) $event['title']) ?></a></h3>
-                            </div>
-                            <button type="button" class="fav-btn" data-fav-id="<?= e((string) $event['id']) ?>" aria-label="Ajouter aux favoris">★</button>
-                        </div>
-                        <p><time datetime="<?= e(isoDate((string) $event['starts_at'])) ?>"><?= e(formatTimeRange((string) $event['starts_at'], (string) ($event['ends_at'] ?? ''))) ?></time> — <?= e((string) $event['location']) ?></p>
-                        <p><?= e(placesLabel($left)) ?></p>
-                        <p class="card-footer"><a href="evenement.php?id=<?= e((string) $event['id']) ?>">Voir le détail</a></p>
-                    </article>
+        <div class="filter-group">
+            <label for="club-filter">Club</label>
+            <select id="club-filter" name="club">
+                <option value="">Tous les clubs</option>
+                <?php foreach ($clubs as $c): ?>
+                    <option value="<?= e($c) ?>" <?= $clubFilter === $c ? 'selected' : '' ?>><?= e($c) ?></option>
                 <?php endforeach; ?>
-            </div>
-        </section>
+            </select>
+        </div>
 
-        <section aria-labelledby="tableau-recap">
-            <h2 id="tableau-recap">Récapitulatif</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Événement</th>
-                        <th>Date</th>
-                        <th>Places restantes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($events as $event): ?>
-                        <?php $left = (int) ($event['places_left'] ?? $event['capacity'] ?? 0); ?>
-                        <tr>
-                            <td><?= e((string) $event['title']) ?></td>
-                            <td><time datetime="<?= e(isoDate((string) $event['starts_at'])) ?>"><?= e(formatTimeRange((string) $event['starts_at'], (string) ($event['ends_at'] ?? ''))) ?></time></td>
-                            <td><?= e(placesLabel($left)) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </section>
+        <div class="filter-group">
+            <label for="sort">Trier par</label>
+            <select id="sort" name="sort">
+                <option value="default">Ordre par défaut</option>
+                <option value="date-asc">Date la plus proche</option>
+                <option value="date-desc">Date la plus lointaine</option>
+                <option value="places-desc">Places : du plus grand au plus petit</option>
+                <option value="places-asc">Places : du plus petit au plus grand</option>
+            </select>
+        </div>
 
-        <figure>
-            <img src="img.jpg" alt="Illustration d'étudiants participant à divers événements clubs sur le campus">
-            <figcaption>Événements ClubHub</figcaption>
-        </figure>
-    </main>
+        <div class="filter-group filter-group-checkbox">
+            <input type="checkbox" id="fav-filter" name="fav">
+            <label for="fav-filter">Seulement mes favoris</label>
+        </div>
+
+        <button type="submit" style="display:none">Filtrer</button>
+    </form>
+
+    <p class="results-count" aria-live="polite"><?= count($filtered) ?> événement<?= count($filtered) > 1 ? 's' : '' ?> affiché<?= count($filtered) > 1 ? 's' : '' ?></p>
+    <p class="empty-message" <?= count($filtered) === 0 ? '' : 'hidden' ?> aria-live="polite">Aucun événement ne correspond à vos critères de recherche.</p>
+
+    <section aria-labelledby="liste-evenements">
+        <h2 id="liste-evenements">Liste des événements</h2>
+        <div class="cartes">
+            <?php foreach ($filtered as $ev): ?>
+                <article 
+                    data-id="<?= e((string)$ev['id']) ?>" 
+                    data-club="<?= e($ev['club']) ?>" 
+                    data-date="<?= e($ev['date']) ?>" 
+                    data-places="<?= e((string)$ev['places']) ?>"
+                >
+                    <div class="card-header-actions">
+                        <div>
+                            <p class="club"><?= e($ev['club']) ?></p>
+                            <h3><a href="evenement.php?id=<?= e((string)$ev['id']) ?>"><?= e($ev['title']) ?></a></h3>
+                        </div>
+                        <button type="button" class="fav-btn" data-fav-id="<?= e((string)$ev['id']) ?>" aria-label="Ajouter aux favoris">★</button>
+                    </div>
+                    <p><time><?= e($ev['date']) ?></time> — <?= e($ev['place'] ?? 'Campus') ?></p>
+                    <p>Places : <?= e((string)$ev['places']) ?></p>
+                    <p class="card-footer"><a href="evenement.php?id=<?= e((string)$ev['id']) ?>">Voir le détail</a></p>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+</main>
 <?php require __DIR__ . '/includes/footer.php'; ?>
