@@ -14,6 +14,7 @@ function registerUser(int $userId, int $eventId, string $motivation): string
     try {
         $pdo->beginTransaction();
 
+        // Verrouillage de la ligne d'événement pour éviter les réservations concurrentes de la dernière place
         $stmt = $pdo->prepare(
             'SELECT e.capacity, COUNT(r.id) AS registered_count
              FROM events e
@@ -60,6 +61,18 @@ function registerUser(int $userId, int $eventId, string $motivation): string
 
 function cancelRegistration(int $userId, int $eventId): bool
 {
+    // Vérification que l'événement n'est pas passé
+    $stmtCheck = db()->prepare('SELECT starts_at FROM events WHERE id = ?');
+    $stmtCheck->execute([$eventId]);
+    $startsAt = $stmtCheck->fetchColumn();
+    if ($startsAt !== false) {
+        $startDt = toDateTime((string) $startsAt);
+        if ($startDt !== null && $startDt < new DateTimeImmutable('now')) {
+            return false;
+        }
+    }
+
+    // Annulation sécurisée : suppression uniquement si user_id correspond à l'utilisateur connecté
     $stmt = db()->prepare('DELETE FROM registrations WHERE user_id = ? AND event_id = ?');
     $stmt->execute([$userId, $eventId]);
     return $stmt->rowCount() > 0;
@@ -68,14 +81,13 @@ function cancelRegistration(int $userId, int $eventId): bool
 function registrationsOfUser(int $userId): array
 {
     $stmt = db()->prepare(
-        'SELECT r.id AS registration_id, r.event_id, r.motivation, r.created_at AS registered_at,
-                e.title, e.club, e.location, e.starts_at, e.ends_at, e.capacity, e.description,
+        'SELECT r.*, e.title, e.club, e.starts_at, e.ends_at, e.location, e.capacity,
                 (e.capacity - COUNT(r2.id)) AS places_left
          FROM registrations r
          JOIN events e ON e.id = r.event_id
          LEFT JOIN registrations r2 ON r2.event_id = e.id
          WHERE r.user_id = ?
-         GROUP BY r.id, r.event_id, r.motivation, r.created_at, e.title, e.club, e.location, e.starts_at, e.ends_at, e.capacity, e.description
+         GROUP BY r.id, e.id
          ORDER BY e.starts_at ASC'
     );
     $stmt->execute([$userId]);

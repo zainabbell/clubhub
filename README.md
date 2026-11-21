@@ -1,77 +1,116 @@
-# ClubHub — Plateforme des clubs étudiants
-
-Ce projet regroupe les étapes de développement du site **ClubHub**, de la version HTML/CSS/JS statique et interactive (Atelier S01, TP1, TP2) jusqu'à la version dynamique sécurisée avec sessions, authentification et base de données (Atelier S04, TP3, TP4).
-
----
+# ClubHub — TP4 (MySQL & PDO)
 
 ## Binôme
 - **Zainab BELAKHAL**
-- **Binôme**
+- *(Binôme)*
 
 ---
 
-## 1. Atelier S01 & TP1 : Styliser ClubHub (CSS & Responsive)
+## 1. Installation de la base de données (Laragon / MySQL)
 
-### Objectifs
-- Écriture d'un balisage HTML5 sémantique et valide (`<header>`, `<nav>`, `<main>`, `<article>`, `<section>`, `<footer>`, `<time>`, `<fieldset>`, etc.).
-- Feuilles de styles modulaires et maintenables avec variables CSS (`:root` et `[data-theme="dark"]`).
-- Maîtrise du Box Model (`box-sizing: border-box`) et des mises en page modernes Flexbox / Grid.
-- Conception **mobile first** et responsive sans barre de défilement horizontale à 360 px.
+Pour initialiser la base de données et charger les données de test :
 
-### Défis TP1 réalisés
-1. **CSS Grid auto-fill + minmax() sans media query** :
-   - Implémenté sur `.cartes` avec `grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));`.
-   - **Différence avec la version Flexbox** : en Flexbox classique, il fallait obligatoirement écrire des points de rupture média (`@media (min-width: 640px)` et `@media (min-width: 960px)`) et recalculer manuellement la largeur des éléments (`flex-basis: calc(...)`). Avec CSS Grid, le navigateur calcule automatiquement le nombre optimal de colonnes selon la largeur réelle de l'écran tout en conservant une taille minimale confortable (280 px).
-2. **Formulaire collant (`position: sticky`)** :
-   - Sur grand écran (`≥ 960px`), le panneau de formulaire d'inscription dans `evenement.html` (`.detail-form`) reste visible lors du défilement grâce à `position: sticky; top: var(--sp-xl);`.
-3. **Feuille de style d'impression (`@media print`)** :
-   - Mise en page optimisée pour l'impression papier ou PDF : masquage de la navigation, du bouton de thème, des boutons favoris et du formulaire d'inscription ; typographie en noir sur fond blanc pur avec espacements nets.
-4. **Accessibilité & Contrastes (WCAG AA ≥ 4.5:1)** :
-   - Les ratios de contraste texte/fond ont été vérifiés via les DevTools de Chrome/Firefox (bleu `#1d4ed8` sur fond clair ≥ 4.6:1, mode sombre `#60a5fa` sur fond `#0f172a` ≥ 8.1:1).
-   - Les éléments interactifs disposent d'un `:focus-visible` très visible avec outline bleu et décalage d'accentuation.
+### Étape 1 : Créer la base et l'utilisateur dans MySQL
+```sql
+CREATE DATABASE clubhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'clubhub'@'localhost' IDENTIFIED BY 'clubhub';
+GRANT ALL PRIVILEGES ON clubhub.* TO 'clubhub'@'localhost';
+FLUSH PRIVILEGES;
+```
 
----
+### Étape 2 : Importer le schéma des tables
+```bash
+mysql -u clubhub -p clubhub < database/schema.sql
+```
 
-## 2. TP2 : ClubHub interactif (JavaScript Vanilla)
+### Étape 3 : Importer les données de test (Seed)
+```bash
+mysql -u clubhub -p clubhub < database/seed.sql
+```
 
-### Objectifs
-- Manipulation avancée du DOM en Vanilla JS (aucun framework, aucun `onclick` inline).
-- Gestion des événements utilisateur (`input`, `change`, `click`, `submit`).
-- Filtrage en temps réel, tri dynamique multicritère et recherche tolérante aux accents.
-- Validation côté client instantanée avec messages clairs et gestion du focus accessible.
-- Persistance locale via `localStorage` (thème et favoris).
+*(Ou via phpMyAdmin : sélectionner la base `clubhub` puis onglet **Importer** pour les deux fichiers `database/schema.sql` puis `database/seed.sql`).*
 
-### Défis TP2 réalisés
-1. **Favoris avec persistance `localStorage`** :
-   - Un clic sur l'étoile (`.fav-btn`) d'une carte l'ajoute ou la retire des favoris stockés sous la clé `clubhub-favorites`.
-   - La case à cocher « Seulement mes favoris » filtre dynamiquement la liste d'événements.
-2. **Recherche insensible aux accents** :
-   - Utilisation de `normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()` afin que la recherche « echecs » ou « robotique » trouve immédiatement « Échecs » ou « Robotique ».
-3. **Résolution du flash en mode sombre (Anti-Flash)** :
-   - **Problème identifié** : Lorsque le script externe `js/app.js` est exécuté à la fin du document ou via `DOMContentLoaded`, la page s'affiche d'abord avec le thème par défaut (fond blanc), puis bascule en sombre dès que le JS s'exécute. Ce saut visuel s'appelle le FOUC (*Flash of Unstyled Content*).
-   - **Solution appliquée** : Un micro-script synchrone a été placé tout en haut du `<head>`. Il lit immédiatement `localStorage.getItem('clubhub-theme')` et applique `document.documentElement.dataset.theme = 'dark'` avant même le tout premier rendu graphique du navigateur. Le flash est ainsi totalement éliminé.
-4. **Compteur de caractères et alerte limite** :
-   - Pour le champ motivation (max 300 caractères), le compteur `#motivation-count` affiche en continu `X / 300` et active la classe `.is-near-limit` dès que 90 % de la limite (270 caractères) est atteinte.
+### Configuration locale (`config.php`)
+Copier `config.example.php` en `config.php` et adapter les identifiants si besoin (Laragon : hôte `127.0.0.1`, port `3306`, utilisateur `root` ou `clubhub`). Le fichier `config.php` est exclu du suivi Git grâce au `.gitignore`.
 
-### Erreurs de console rencontrées et résolues (F12)
-1. **`Uncaught SyntaxError: Unexpected identifier 'submit'`** :
-   - *Cause* : Dans la fonction `initRegistrationForm()`, des guillemets doublés `''submit''`, `''hidden''`, `''get''`, `''.is-invalid''` étaient présents au lieu de guillemets simples `'submit'`. Cela provoquait un arrêt brutal du moteur JS et une erreur rouge dans la console dès l'ouverture de la page.
-   - *Correction* : Nettoyage et correction de toutes les chaînes en guillemets simples valides.
-2. **Tri de dates renvoyant `NaN` (incohérence chronologique)** :
-   - *Cause* : Lors du tri par date sur les attributs `data-date`, certaines cartes contenaient une chaîne au format français `14/10, 14 h` non reconnue par `new Date()`.
-   - *Correction* : Mise en place de la fonction robuste `parseEventDate(val)` qui gère à la fois le format standard ISO (`2026-10-14T14:00`) et le format textuel par extraction RegExp.
-3. **Empêchement de l'envoi en version statique TP2** :
-   - *Cause* : Le test `method === 'get'` ne bloquait pas la soumission d'un formulaire en `method="post"`, provoquant une redirection vers `inscription.php` introuvable.
-   - *Correction* : En mode statique TP2, le JS intercepte systématiquement l'envoi valide, affiche `.form-success`, réinitialise le formulaire et remet à zéro le compteur de caractères.
+**Comptes de démonstration créés par le seed :**
+- 7 utilisateurs de test avec le mot de passe : `demo1234`
+- Exemples : `alice@clubhub.test` (étudiante), `sarra@clubhub.test`, `robotique@clubhub.test` (organisateur).
 
 ---
 
-## 3. Atelier S04, TP3 & TP4 : Backend PHP, Authentification & Sécurité
+## 2. Question 5 — Test d'injection SQL (`' OR '1'='1`)
 
-### Sécurité & Bonnes pratiques
-- **Échappement universel contre les failles XSS** : toute donnée injectée dans le HTML passe systématiquement par la fonction `e()` (`htmlspecialchars(..., ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')`).
-- **Protection contre les injections SQL** : toutes les requêtes SQL utilisent PDO avec des requêtes préparées (`prepare()` + `execute()`).
-- **Mots de passe hachés** : aucun mot de passe n'est stocké ou véhiculé en clair ; utilisation exclusive de `password_hash($pw, PASSWORD_DEFAULT)` et `password_verify()`.
-- **Pattern Post/Redirect/Get (PRG)** : après chaque opération modifiant des données (connexion, déconnexion, inscription, annulation), une redirection HTTP (`302`) est déclenchée avec un message flash en session, évitant la double soumission du formulaire lors d'un rafraîchissement (F5).
-- **Protection Open Redirect** : la redirection après connexion est filtrée par `safeNext()` pour interdire les URLs externes malveillantes.
-- **Annulation sécurisée** : suppression d'une inscription restreinte au couple `(user_id, event_id)` de l'utilisateur connecté via méthode POST.
+Si un utilisateur saisit l'email `' OR '1'='1` et un mot de passe quelconque :
+- **Résultat observé (version sécurisée)** : la tentative de connexion échoue avec le message générique *« Email ou mot de passe incorrect. »*. Aucune session n'est ouverte et aucune information de la base n'est divulguée.
+- **Pourquoi (explication technique)** :
+  Dans notre code (`includes/users.php`), la recherche utilise une requête préparée :
+  ```php
+  $stmt = db()->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
+  $stmt->execute([$email]);
+  ```
+  Le moteur MySQL compile d'abord la structure syntaxique de la requête SQL avec le marqueur de paramètre `?`. Ensuite, la valeur de `$email` est envoyée séparément comme une **valeur littérale brute** (une chaîne de caractères) et non comme du code exécutable. La chaîne `' OR '1'='1` n'altère donc pas la logique booléenne de la clause `WHERE` : MySQL cherche littéralement un utilisateur dont l'adresse email est exactement `' OR '1'='1`.
+  
+  *À l'inverse, dans une version vulnérable par concaténation (`"... WHERE email = '$email'"`), l'entrée deviendrait `"... WHERE email = '' OR '1'='1' LIMIT 1"`, rendant la condition toujours vraie et authentifiant l'attaquant sur le premier compte utilisateur de la table.*
+
+---
+
+## 3. Fonctionnalités réalisées (Base & Plus)
+
+### Architecture et Connexion PDO (`includes/db.php` & `includes/bootstrap.php`)
+- Instance unique PDO via `db()` configurée avec :
+  - `PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION` (gestion des erreurs par exceptions)
+  - `PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC` (tableaux associatifs)
+  - `PDO::ATTR_EMULATE_PREPARES => false` (vraies requêtes préparées au niveau MySQL)
+  - `charset=utf8mb4` (support complet des accents et emojis sans corruption)
+- Toutes les requêtes SQL sont centralisées dans les fichiers de services : `includes/events.php`, `includes/users.php`, `includes/registrations.php`. **Aucune requête SQL n'est écrite directement dans les pages.**
+- Les anciens fichiers plats `data/events.php` et `data/users.json` ont été supprimés.
+
+### Événements (`includes/events.php`)
+- `getEvents(?int $limit = null)` : retourne les événements futurs (`starts_at >= NOW()`) ordonnés chronologiquement, avec calcul automatique des places restantes.
+- `findEvent(int $id)` : recherche par requête préparée.
+- Affichage des dates et plages horaires via `formatDate()` et `formatTimeRange()`.
+- Découpage du programme et du matériel à apporter ligne par ligne via la fonction `lines()`.
+
+### Gestion des utilisateurs (`includes/users.php`)
+- Fonctions `findUserByEmail`, `findUserById`, `addUser` et `verifyUserPassword` entièrement basées sur des requêtes préparées PDO.
+- Mots de passe systématiquement hachés avec `password_hash($pw, PASSWORD_DEFAULT)` et vérifiés avec `password_verify()`.
+
+### Inscriptions en base de données (`includes/registrations.php`)
+- Les inscriptions sont persistées dans la table MySQL `registrations` et **survivent à la déconnexion** de l'utilisateur.
+- **Places restantes calculées en SQL** : `(e.capacity - COUNT(r.id)) AS places_left` via `LEFT JOIN registrations r ON r.event_id = e.id GROUP BY e.id`.
+- Si un événement est complet (`places_left <= 0`), le badge « Complet » s'affiche, le formulaire est masqué et le serveur refuse toute nouvelle inscription.
+- **Gestion des doublons (Point 8)** : la contrainte `UNIQUE(user_id, event_id)` de la base empêche toute double inscription. La `PDOException` de code `'23000'` est interceptée pour afficher un message utilisateur clair au lieu d'une erreur brute.
+- **Annulation sûre (Point 9)** : la requête de suppression dans `cancelRegistration()` utilise obligatoirement `DELETE FROM registrations WHERE user_id = ? AND event_id = ?`. Même si un utilisateur tente de modifier l'identifiant dans les DevTools, il est impossible de supprimer l'inscription d'un tiers.
+
+---
+
+## 4. Défis choisis (jusqu'à 20/20)
+
+### 1. La dernière place (Transaction et `SELECT ... FOR UPDATE`)
+- **Problème de concurrence (*Race Condition*)** : Si deux utilisateurs A et B soumettent en même temps leur inscription alors qu'il ne reste qu'une seule place disponible, sans verrouillage, les deux processus lisent `places_left = 1` en parallèle et insèrent tous deux leur inscription, provoquant un dépassement de capacité (*overbooking*).
+- **Solution implémentée** : Dans `registerUser()` (`includes/registrations.php`), l'opération est enveloppée dans une transaction PDO (`beginTransaction()`) avec un verrou exclusif sur la ligne de l'événement :
+  ```sql
+  SELECT e.capacity, COUNT(r.id) AS registered_count
+  FROM events e
+  LEFT JOIN registrations r ON r.event_id = e.id
+  WHERE e.id = ?
+  GROUP BY e.id
+  FOR UPDATE;
+  ```
+  Le premier utilisateur verrouille la ligne ; le second attend que la transaction du premier se termine (`commit`). Lorsque le second lit à son tour la ligne, le compteur a été incrémenté et la fonction lui renvoie immédiatement `'full'`.
+
+### 2. Recherche côté serveur (`evenements.php?q=...`)
+- Dans `includes/events.php`, la fonction `searchEvents(string $q)` exécute une requête préparée avec `LIKE ?` sur le titre, le club, la description et le lieu :
+  ```sql
+  WHERE e.starts_at >= NOW()
+    AND (e.title LIKE ? OR e.club LIKE ? OR e.description LIKE ? OR e.location LIKE ?)
+  ```
+- Le formulaire de filtres fonctionne parfaitement en méthode `GET` même lorsque JavaScript est totalement désactivé (balise `<noscript>` et soumission native).
+
+### 3. Gestion des événements passés dans « Mon compte »
+- Dans `mon-compte.php`, les inscriptions de l'utilisateur sont séparées dynamiquement en deux sections : **« Mes inscriptions — À venir »** et **« Mes inscriptions — Passées »**.
+- Côté serveur, `cancelRegistration()` vérifie la date de l'événement et refuse formellement l'annulation si la date de début est antérieure à l'instant présent (`starts_at < NOW()`).
+
+### 4. Démonstration de preuve d'injection (`demo-injection.php`)
+- Un fichier autonome [demo-injection.php](file:///c:/1%20ING1-5/dev%20web/clubhub/demo-injection.php) a été créé pour illustrer concrètement la différence entre une concaténation vulnérable (où le payload `' OR '1'='1` réussit à extraire le premier utilisateur) et la requête préparée PDO (qui neutralise complètement l'attaque).
